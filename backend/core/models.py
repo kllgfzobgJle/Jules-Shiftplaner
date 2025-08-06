@@ -28,3 +28,20 @@ class Employee(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+
+
+class ShiftType(models.Model):
+    """Represents a type of shift, e.g., early, late, night."""
+    name = models.CharField(max_length=50)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    monday_required = models.PositiveIntegerField(default=0)
+    tuesday_required = models.PositiveIntegerField(default=0)
+    wednesday_required = models.PositiveIntegerField(default=0)
+    thursday_required = models.PositiveIntegerField(default=0)
+    friday_required = models.PositiveIntegerField(default=0)
+    saturday_required = models.PositiveIntegerField(default=0)
+    sunday_required = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return self.name
