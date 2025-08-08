@@ -40,7 +40,7 @@ This project uses a **modern full‑stack approach** and relies on technologies 
 ## Project Structure
 
 ```
-Jules-Shiftplanner/
+Jules-Shiftplaner/
 ├── backend/                 # Django project (manage.py, settings, apps)
 │   ├── core/                # Data models & business logic
 │   ├── api/                 # DRF REST endpoints
