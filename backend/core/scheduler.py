@@ -1,4 +1,4 @@
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime
 from django.db import transaction
 from .models import ShiftPlan, ShiftAssignment, Employee, ShiftType, ShiftRule, Absence
 
@@ -19,13 +19,16 @@ class Scheduler:
     def run(self):
         """
         Executes the scheduling algorithm.
-        This is a basic greedy implementation for the initial version.
+        This uses a greedy approach enhanced with fairness scoring.
         """
         current_date = self.plan.start_date
 
         with transaction.atomic():
-            # Clear existing assignments for this plan to allow re-runs
-            self.plan.assignments.all().delete()
+            # Only delete unlocked assignments
+            self.plan.assignments.filter(is_locked=False).delete()
+
+            # Re-fetch assignments that are locked to consider them in workload
+            self.locked_assignments = list(self.plan.assignments.filter(is_locked=True))
 
             while current_date <= self.plan.end_date:
                 self.schedule_day(current_date)
@@ -46,21 +49,31 @@ class Scheduler:
 
         for shift_type in self.shift_types:
             required_count = getattr(shift_type, weekday_field)
-            assigned_count = 0
 
-            # Simple greedy: try to find an available employee for each required slot
-            # In a real algo, we would sort employees by "fairness" or utilization
+            # Check how many are already locked for this day/type
+            current_assignments = ShiftAssignment.objects.filter(
+                shift_plan=self.plan,
+                date=date_obj,
+                shift_type=shift_type
+            ).count()
+
+            needed = required_count - current_assignments
+
+            if needed <= 0:
+                continue
+
             available_employees = self.get_available_employees(date_obj, shift_type)
 
-            # Sort by workload (lowest first) to distribute evenly
-            available_employees.sort(key=lambda e: self.calculate_current_workload(e))
+            # Sort by fairness score (combination of workload and suitability)
+            # Lower score = better candidate to pick (e.g. fewer hours)
+            available_employees.sort(key=lambda e: self.calculate_fairness_score(e, shift_type))
 
             for employee in available_employees:
-                if assigned_count >= required_count:
+                if needed <= 0:
                     break
 
                 self.assign_shift(employee, shift_type, date_obj)
-                assigned_count += 1
+                needed -= 1
 
     def get_available_employees(self, date_obj, shift_type):
         """Returns a list of employees who can work this shift."""
@@ -80,29 +93,19 @@ class Scheduler:
                     return False
 
         # 2. Check if already assigned today (simple logic: 1 shift per day)
-        # Note: In a real run, we might need to check the in-memory assignments created during this run.
-        # Since we commit at the end, we can query the DB if we save as we go, or keep a local set.
-        # For this implementation, we will save assignments to DB immediately inside the transaction,
-        # so we can query them.
         if ShiftAssignment.objects.filter(employee=employee, date=date_obj).exists():
             return False
 
         # 3. Check allowed shift types
-        # This requires fetching ManyToMany. Optimally we prefetch.
         if not employee.allowed_shift_types.filter(id=shift_type.id).exists():
-            # If no allowed types are set, assume all are allowed? Or none?
-            # Usually strict: if list is not empty, must be in it.
-            # If empty, maybe allowed? Let's assume strict if populated.
             if employee.allowed_shift_types.exists():
                 return False
 
-        # 4. Check Shift Rules (simplified)
-        # e.g., Forbidden Sequence: specific previous shift yesterday -> cannot do this one today.
+        # 4. Check Shift Rules
         yesterday = date_obj - timedelta(days=1)
         prev_assignment = ShiftAssignment.objects.filter(employee=employee, date=yesterday).first()
 
         if prev_assignment:
-            # Check forbidden sequences
             forbidden_rules = [r for r in self.rules if r.rule_type == 'FORBIDDEN_SEQUENCE']
             for rule in forbidden_rules:
                 if rule.from_shift_type_id == prev_assignment.shift_type_id and rule.to_shift_type_id == shift_type.id:
@@ -119,10 +122,30 @@ class Scheduler:
             date=date_obj
         )
 
-    def calculate_current_workload(self, employee):
-        """Calculates current workload for fair distribution logic."""
-        # In a real app, this would sum hours. Here we just count shifts in this plan so far.
-        return ShiftAssignment.objects.filter(
+    def calculate_fairness_score(self, employee, shift_type):
+        """
+        Calculates a score for sorting candidates.
+        Primary factor: Workload relative to target percentage.
+        Secondary factor: Suitability (preference) - Inverted so lower is better for sorting.
+        """
+        # 1. Calculate workload ratio (Actual Shifts / Target Share of Total)
+        # Note: This is simplified.
+        current_shifts = ShiftAssignment.objects.filter(
             shift_plan=self.plan,
             employee=employee
         ).count()
+
+        # Avoid division by zero
+        target = float(employee.workload_percentage) if employee.workload_percentage > 0 else 1.0
+        workload_score = (current_shifts * 100) / target
+
+        # 2. Suitability bonus (0-5, where 5 is best)
+        # We want higher suitability to LOWER the score (so they get picked first)
+        # Suitability is stored as JSON {"<id>": rating}
+        suitability = employee.suitability.get(str(shift_type.id), 0)
+
+        # Heuristic: A suitability point is worth "reducing" the workload score slightly
+        # to prefer them even if they have slightly more work.
+        suitability_deduction = suitability * 5
+
+        return workload_score - suitability_deduction
