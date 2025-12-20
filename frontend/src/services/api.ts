@@ -12,6 +12,21 @@ const api = axios.create({
   },
 });
 
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+        config.headers.Authorization = `Token ${token}`;
+    }
+    return config;
+});
+
+export const AuthService = {
+    login: async (username: string, password: string) => {
+        const response = await api.post<{token: string}>('/api-token-auth/', { username, password });
+        return response.data;
+    }
+};
+
 export const EmployeeService = {
   getAll: async () => (await api.get<Employee[]>('/employees/')).data,
   get: async (id: string) => (await api.get<Employee>(`/employees/${id}/`)).data,

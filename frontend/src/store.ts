@@ -3,8 +3,16 @@ import {
   EmployeeService, TeamService, ShiftTypeService, ShiftRuleService, ShiftAssignmentService, AbsenceService, ShiftPlanService
 } from './services/api';
 import type { Employee, Team, ShiftType, ShiftRule, ShiftAssignment, Absence, Settings, ShiftPlan } from './types';
+import axios from 'axios';
 
-interface AppState {
+interface AuthState {
+  token: string | null;
+  isAuthenticated: boolean;
+  login: (token: string) => void;
+  logout: () => void;
+}
+
+interface AppState extends AuthState {
   employees: Employee[];
   teams: Team[];
   shiftTypes: ShiftType[];
@@ -58,6 +66,21 @@ interface AppState {
 }
 
 export const useStore = create<AppState>()((set, get) => ({
+  // Auth State
+  token: localStorage.getItem('auth_token'),
+  isAuthenticated: !!localStorage.getItem('auth_token'),
+
+  login: (token: string) => {
+    localStorage.setItem('auth_token', token);
+    set({ token, isAuthenticated: true });
+    // Assuming api client needs updating, typically handled via interceptor or re-creation
+    // but here we might just reload or rely on the api service reading from local/state
+  },
+  logout: () => {
+    localStorage.removeItem('auth_token');
+    set({ token: null, isAuthenticated: false });
+  },
+
   employees: [],
   teams: [],
   shiftTypes: [],

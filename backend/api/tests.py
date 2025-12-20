@@ -1,10 +1,16 @@
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
+from django.contrib.auth.models import User
 from core.models import Employee, Team, ShiftType, ShiftRule
 
 class APITestCase(APITestCase):
     def setUp(self):
+        # Create a user for authentication
+        self.user = User.objects.create_user(username='testuser', password='password')
+        # Authenticate all requests for this test case
+        self.client.force_authenticate(user=self.user)
+
         self.team = Team.objects.create(name="Alpha", target_share=100)
         self.shift_type = ShiftType.objects.create(
             name="Early",

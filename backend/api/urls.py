@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from rest_framework.authtoken import views as auth_views
 from .views import (
     TeamViewSet, EmployeeViewSet, ShiftTypeViewSet,
     ShiftRuleViewSet, ShiftPlanViewSet, ShiftAssignmentViewSet, AbsenceViewSet
@@ -17,5 +18,6 @@ router.register(r'absences', AbsenceViewSet)
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
+    path('api-token-auth/', auth_views.obtain_auth_token),
     path('', include(router.urls)),
 ]

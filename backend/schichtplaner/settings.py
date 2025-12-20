@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # 3rd party
     "rest_framework",
+    "rest_framework.authtoken",
     "corsheaders",
     # local
     "core",
@@ -64,6 +65,16 @@ CORS_ALLOWED_ORIGINS = [
 ]
 # Optionally allow all for dev if needed, but explicit is better
 # CORS_ALLOW_ALL_ORIGINS = True
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
 
 ROOT_URLCONF = "schichtplaner.urls"
 
