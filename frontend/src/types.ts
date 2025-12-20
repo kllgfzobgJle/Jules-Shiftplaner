@@ -1,4 +1,4 @@
-export type EmployeeType = 'TRAINED' | 'APPRENTICE_1' | 'APPRENTICE_2' | 'APPRENTICE_3' | 'APPRENTICE_4';
+export type EmployeeType = 'FULL' | 'APPRENTICE'; // Updated to match backend
 
 export type Weekday = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 
@@ -10,69 +10,78 @@ export interface Availability {
 }
 
 export interface Employee {
-  id: string;
-  firstName: string;
-  lastName: string;
-  initials: string;
-  type: EmployeeType;
-  workload: number; // 0-100
-  teamId?: string;
-  allowedShiftTypes: string[]; // shiftType IDs
-  suitability: Record<string, number>; // shiftType ID -> 0-5
+  id: string; // Django ID is usually number, but generic ID is fine if we cast
+  first_name: string; // Backend uses snake_case
+  last_name: string;
+  abbreviation: string;
+  employee_type: EmployeeType;
+  apprenticeship_year?: number;
+  workload_percentage: number;
+  team: number; // ID
+  personal_shift_quota?: number;
+
+  allowed_shift_types: number[]; // IDs
+  suitability: Record<string, number>;
   availability: Record<Weekday, Availability>;
-  preferredShifts: string[]; // shiftType IDs
-  redundancyGroup?: string;
 }
 
 export interface Team {
   id: string;
   name: string;
-  targetShiftShare: number;
-  teamLeadId?: string;
-  ruleIds: string[];
+  target_share: number;
+  shift_rules: number[]; // IDs
 }
 
 export interface ShiftType {
   id: string;
   name: string;
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
-  requiredStaff: Record<Weekday, number>;
-  color: string;
-  weight: number;
+  start_time: string; // HH:mm:ss
+  end_time: string; // HH:mm:ss
+  monday_required: number;
+  tuesday_required: number;
+  wednesday_required: number;
+  thursday_required: number;
+  friday_required: number;
+  saturday_required: number;
+  sunday_required: number;
 }
 
-export type RuleType = 'FORBIDDEN_SEQUENCE' | 'REQUIRED_SEQUENCE' | 'MANDATORY_FOLLOW_UP' | 'MAX_HOURS';
+export type RuleType = 'FORBIDDEN_SEQUENCE' | 'REQUIRED_SEQUENCE' | 'MANDATORY_FOLLOW_UP';
 
-export interface Rule {
+export interface ShiftRule {
   id: string;
-  type: RuleType;
   name: string;
-  params: {
-    fromShiftTypeId?: string;
-    toShiftTypeId?: string;
-    maxHours?: number;
-    timeframe?: number; // days
-    // Add more as needed
-  };
-  scope: 'GLOBAL' | 'TEAM' | 'EMPLOYEE';
-  targetId?: string;
+  description?: string;
+  rule_type: RuleType;
+  from_shift_type: number; // ID
+  to_shift_type: number; // ID
+  is_same_day: boolean;
+}
+
+export interface ShiftPlan {
+  id: string;
+  name: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string;
+  is_public: boolean;
 }
 
 export interface ShiftAssignment {
   id: string;
-  employeeId: string;
-  shiftTypeId: string;
+  shift_plan: number; // ID
+  employee: number; // ID
+  shift_type: number; // ID
   date: string; // YYYY-MM-DD
+  is_locked: boolean;
 }
 
 export interface Absence {
   id: string;
-  employeeId: string;
-  startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
-  reason?: string;
-  type: 'SICK' | 'VACATION' | 'OTHER';
+  employee: number; // ID
+  start_date: string;
+  end_date: string;
+  reason: string;
+  absence_type: 'VACATION' | 'SICK' | 'OTHER';
 }
 
 export interface Settings {

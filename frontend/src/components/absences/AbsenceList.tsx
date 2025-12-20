@@ -1,179 +1,126 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store';
+import { Plus, Trash2, Calendar, User } from 'lucide-react';
 import type { Absence } from '../../types';
-import { Trash2, Edit, Plus, Save, X } from 'lucide-react';
-import { format } from 'date-fns';
 
 const AbsenceList: React.FC = () => {
-  const { absences, addAbsence, updateAbsence, deleteAbsence, employees } = useStore();
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const { absences, employees, addAbsence, deleteAbsence } = useStore();
   const [isCreating, setIsCreating] = useState(false);
 
-  const initialAbsence: Omit<Absence, 'id'> = {
-    employeeId: '',
-    startDate: format(new Date(), 'yyyy-MM-dd'),
-    endDate: format(new Date(), 'yyyy-MM-dd'),
-    type: 'VACATION',
+  const initialAbsence: Partial<Absence> = {
+    employee: 0,
+    start_date: '',
+    end_date: '',
     reason: '',
+    absence_type: 'VACATION'
   };
 
-  const [formData, setFormData] = useState<Omit<Absence, 'id'>>(initialAbsence);
+  const [formData, setFormData] = useState<Partial<Absence>>(initialAbsence);
 
-  const handleEdit = (absence: Absence) => {
-    setEditingId(absence.id);
-    setFormData(absence);
-    setIsCreating(false);
-  };
-
-  const handleCreate = () => {
-    setIsCreating(true);
-    setEditingId(null);
-    setFormData(initialAbsence);
-  };
-
-  const handleCancel = () => {
-    setEditingId(null);
-    setIsCreating(false);
-    setFormData(initialAbsence);
-  };
-
-  const handleSave = () => {
-    if (editingId) {
-      updateAbsence(editingId, formData);
-    } else {
-      addAbsence({ ...formData, id: crypto.randomUUID() });
-    }
-    handleCancel();
-  };
-
-  const handleChange = (field: keyof Absence, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleCreate = async () => {
+      await addAbsence(formData);
+      setIsCreating(false);
+      setFormData(initialAbsence);
   };
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Absences</h2>
-        <button
-          onClick={handleCreate}
-          className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-blue-700"
-        >
-          <Plus size={16} /> Record Absence
+        <button onClick={() => setIsCreating(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg">
+          <Plus size={16} /> Add Absence
         </button>
       </div>
 
-      {(isCreating || editingId) && (
-        <div className="bg-white p-6 rounded shadow mb-6 border">
-          <h3 className="text-xl font-semibold mb-4">{isCreating ? 'New Absence' : 'Edit Absence'}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Employee</label>
-              <select
-                value={formData.employeeId}
-                onChange={(e) => handleChange('employeeId', e.target.value)}
-                className="w-full border rounded p-2"
-              >
-                <option value="">Select Employee</option>
-                {employees.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.firstName} {e.lastName}
-                  </option>
-                ))}
-              </select>
+      {isCreating && (
+        <div className="mb-6 p-4 bg-white rounded shadow border">
+            <h3 className="font-bold mb-4">New Absence</h3>
+            <div className="grid grid-cols-2 gap-4">
+                <select
+                    className="border p-2 rounded"
+                    value={formData.employee}
+                    onChange={e => setFormData({...formData, employee: Number(e.target.value)})}
+                >
+                    <option value={0}>Select Employee...</option>
+                    {employees.map(e => <option key={e.id} value={e.id}>{e.first_name} {e.last_name}</option>)}
+                </select>
+                <select
+                    className="border p-2 rounded"
+                    value={formData.absence_type}
+                    onChange={e => setFormData({...formData, absence_type: e.target.value as any})}
+                >
+                    <option value="VACATION">Vacation</option>
+                    <option value="SICK">Sick</option>
+                    <option value="OTHER">Other</option>
+                </select>
+                <input
+                    type="date"
+                    className="border p-2 rounded"
+                    value={formData.start_date}
+                    onChange={e => setFormData({...formData, start_date: e.target.value})}
+                />
+                <input
+                    type="date"
+                    className="border p-2 rounded"
+                    value={formData.end_date}
+                    onChange={e => setFormData({...formData, end_date: e.target.value})}
+                />
+                 <input
+                    placeholder="Reason"
+                    className="border p-2 rounded col-span-2"
+                    value={formData.reason}
+                    onChange={e => setFormData({...formData, reason: e.target.value})}
+                />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <select
-                value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value)}
-                className="w-full border rounded p-2"
-              >
-                <option value="VACATION">Vacation</option>
-                <option value="SICK">Sick Leave</option>
-                <option value="OTHER">Other</option>
-              </select>
+            <div className="mt-4 flex gap-2">
+                <button onClick={handleCreate} className="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+                <button onClick={() => setIsCreating(false)} className="bg-gray-200 px-4 py-2 rounded">Cancel</button>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Start Date</label>
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => handleChange('startDate', e.target.value)}
-                className="w-full border rounded p-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">End Date</label>
-              <input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => handleChange('endDate', e.target.value)}
-                className="w-full border rounded p-2"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Reason (Optional)</label>
-              <input
-                type="text"
-                value={formData.reason || ''}
-                onChange={(e) => handleChange('reason', e.target.value)}
-                className="w-full border rounded p-2"
-              />
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-2">
-            <button onClick={handleCancel} className="px-4 py-2 border rounded hover:bg-gray-50 flex items-center gap-2">
-              <X size={16} /> Cancel
-            </button>
-            <button onClick={handleSave} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2">
-              <Save size={16} /> Save
-            </button>
-          </div>
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border rounded">
-          <thead className="bg-gray-100">
+      <div className="bg-white rounded shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="p-3 text-left">Employee</th>
-              <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">Period</th>
-              <th className="p-3 text-left">Reason</th>
-              <th className="p-3 text-right">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dates</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {absences.length === 0 && (
-              <tr>
-                <td colSpan={5} className="p-4 text-center text-gray-500">
-                  No absences recorded.
-                </td>
-              </tr>
-            )}
-            {absences.map((absence) => {
-              const emp = employees.find((e) => e.id === absence.employeeId);
-              return (
-                <tr key={absence.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3">
-                    {emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown'}
-                  </td>
-                  <td className="p-3">{absence.type}</td>
-                  <td className="p-3">
-                    {absence.startDate} to {absence.endDate}
-                  </td>
-                  <td className="p-3">{absence.reason || '-'}</td>
-                  <td className="p-3 text-right">
-                    <button onClick={() => handleEdit(absence)} className="text-blue-600 hover:text-blue-800 mr-2">
-                      <Edit size={18} />
-                    </button>
-                    <button onClick={() => deleteAbsence(absence.id)} className="text-red-600 hover:text-red-800">
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              );
+          <tbody className="bg-white divide-y divide-gray-200">
+            {absences.map(absence => {
+                const emp = employees.find(e => String(e.id) === String(absence.employee));
+                return (
+                    <tr key={absence.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                                <User size={16} className="text-gray-400" />
+                                <span className="text-sm font-medium text-gray-900">
+                                    {emp ? `${emp.first_name} ${emp.last_name}` : 'Unknown'}
+                                </span>
+                            </div>
+                        </td>
+                         <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                absence.absence_type === 'SICK' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                            }`}>
+                                {absence.absence_type}
+                            </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {absence.start_date} - {absence.end_date}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{absence.reason}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button onClick={() => deleteAbsence(absence.id)} className="text-red-600 hover:text-red-900">
+                                <Trash2 size={16} />
+                            </button>
+                        </td>
+                    </tr>
+                );
             })}
           </tbody>
         </table>
