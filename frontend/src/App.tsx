@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import EmployeeList from './components/employees/EmployeeList';
 import TeamList from './components/teams/TeamList';
@@ -9,6 +9,7 @@ import AbsenceList from './components/absences/AbsenceList';
 import ReportsDashboard from './components/reports/ReportsDashboard';
 import { Users, Calendar, BarChart, ShieldAlert, UserX, Layers } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useStore } from './store';
 
 const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string }> = ({ to, icon, label }) => {
   const location = useLocation();
@@ -28,6 +29,12 @@ const NavLink: React.FC<{ to: string; icon: React.ReactNode; label: string }> = 
 };
 
 const App: React.FC = () => {
+  const { fetchAll } = useStore();
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
   return (
     <Router>
       <div className="flex h-screen bg-gray-100">
